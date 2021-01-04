@@ -6,7 +6,7 @@ This is a plugin for [Obsidian](https://obsidian.md) that allows you to toggle t
 - A new button in the ribbon that allows the global hiding or showing of completed tasks in preview mode.
  
 ### Demo
-
+![](demo-assets/ribbon-button.gif)
 ## How to install
 
 In Obsidian go to `Settings > Third-party plugins > Community Plugins > Browse` and search for `Completed Task Display`.
