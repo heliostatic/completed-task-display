@@ -8,3 +8,6 @@ yarn.lock
 # build
 main.js
 *.js.map
+
+# Mac
+.DS_Store
