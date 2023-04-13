@@ -1,17 +1,29 @@
-import { App, Plugin, addIcon} from 'obsidian';
+import { App, Plugin, addIcon, PluginManifest } from 'obsidian';
 
 export default class TaskHiderPlugin extends Plugin {
+	statusBar: HTMLElement;
+
+	constructor(app: App, manifest: PluginManifest) {
+		super(app, manifest);
+		this.statusBar = this.addStatusBarItem();
+	}
+
+	toggleCompletedTaskView() {
+		document.body.toggleClass('hide-completed-tasks', hiddenState);
+		hiddenState = !hiddenState;
+		this.statusBar.setText(hiddenState ? 'Showing Completed Tasks' : 'Hiding Completed Tasks');
+	}
+
 	async onload() {
 		console.log('loading completed-task-display plugin');
-		
-		let statusBar = this.addStatusBarItem();
-		statusBar.setText('Showing Completed Tasks');
+		this.statusBar.setText('Showing Completed Tasks');
 
 		addIcon('tasks', taskShowIcon);
-		this.addRibbonIcon('tasks', 'Task Hider', () => {
-			document.body.toggleClass('hide-completed-tasks', hiddenState);
-			hiddenState = !hiddenState;
-			statusBar.setText(hiddenState ? 'Showing Completed Tasks' : 'Hiding Completed Tasks');
+		this.addRibbonIcon('tasks', 'Task Hider', this.toggleCompletedTaskView);
+		this.addCommand({
+			id: "toggle-completed-task-view",
+			name: "Toggle Completed Task View",
+			callback: this.toggleCompletedTaskView,
 		});
 	}
 
