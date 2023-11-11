@@ -1,8 +1,10 @@
 body.hide-completed-tasks {
+    --hiding-complete-task-speed: 1ms;
+
     .markdown-source-view {
         .HyperMD-task-line {
             &[data-task]:not([data-task=" "]) {
-                animation: hide 0.5s ease-in-out 0.5s;
+                animation: hide var(--hiding-complete-task-speed) ease-in-out var(--hiding-complete-task-speed);
                 animation-fill-mode: forwards;
                 box-sizing: border-box;
             }
@@ -14,8 +16,12 @@ body.hide-completed-tasks {
     }
 
     .markdown-preview-view ul>li.task-list-item.is-checked {
-        animation: hide 0.5s ease-in-out 0.5s;
+        animation: hide var(--hiding-complete-task-speed) ease-in-out var(--hiding-complete-task-speed);
         animation-fill-mode: forwards;
+    }
+
+    &.add-animation {
+        --hiding-complete-task-speed: 0.5s;
     }
 }
 
