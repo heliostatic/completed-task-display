@@ -1,5 +1,43 @@
-body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item.is-checked,
-body.hide-completed-tasks .markdown-source-view .HyperMD-task-line[data-task]:not([data-task=" "]) {
-    display: none;
+body.hide-completed-tasks {
+    --hiding-complete-task-speed: 1ms;
+
+    .markdown-source-view {
+        .HyperMD-task-line {
+            &[data-task]:not([data-task=" "]) {
+                animation: hide var(--hiding-complete-task-speed) ease-in-out var(--hiding-complete-task-speed);
+                animation-fill-mode: forwards;
+                box-sizing: border-box;
+            }
+        }
     }
-}"])
+
+    .status-bar-item.plugin-completed-task-display {
+        opacity: 0.5;
+    }
+
+    .markdown-preview-view ul>li.task-list-item.is-checked {
+        animation: hide var(--hiding-complete-task-speed) ease-in-out var(--hiding-complete-task-speed);
+        animation-fill-mode: forwards;
+    }
+
+    &.add-animation {
+        --hiding-complete-task-speed: 0.5s;
+    }
+}
+
+@keyframes hide {
+    0% {
+        opacity: 1;
+    }
+
+    99% {
+        max-height: auto;
+    }
+
+    100% {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+}
