@@ -14,7 +14,7 @@ export default class TaskHiderPlugin extends Plugin {
 		setIcon(this.statusBar, "list-checks");
 		this.statusBar.addEventListener('click', this.toggleCompletedTaskView.bind(this));
 		this.statusBar.addClass('mod-clickable');
-		this.registerEvent(this.app.workspace.on('layout-change', this.skipAnimation.bind(this)));
+		this.registerEvent(this.app.workspace.on('file-open', this.skipAnimation.bind(this)));
 	}
 
 	async skipAnimation(workspace: any) {
