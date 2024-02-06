@@ -23,7 +23,9 @@ export default class TaskHiderPlugin extends Plugin {
 		this.addCommand({
 			id: "toggle-completed-task-view",
 			name: "Toggle Completed Task View",
-			callback: this.toggleCompletedTaskView,
+			callback: () => {
+				this.toggleCompletedTaskView();
+			}
 		});
 	}
 
