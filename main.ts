@@ -19,7 +19,7 @@ export default class TaskHiderPlugin extends Plugin {
 		this.statusBar.setText('Showing Completed Tasks');
 
 		addIcon('tasks', taskShowIcon);
-		this.addRibbonIcon('tasks', 'Task Hider', this.toggleCompletedTaskView);
+		this.addRibbonIcon('tasks', 'Task Hider', () => { this.toggleCompletedTaskView()});
 		this.addCommand({
 			id: "toggle-completed-task-view",
 			name: "Toggle Completed Task View",
