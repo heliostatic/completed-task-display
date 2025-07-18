@@ -1,5 +1,12 @@
+/* Hide completed tasks in preview mode */
 body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item.is-checked,
+/* Hide completed tasks in source mode */
 body.hide-completed-tasks .markdown-source-view .HyperMD-task-line[data-task]:not([data-task=" "]) {
     display: none;
-    }
-}"])
+}
+
+/* Hide nested lists (sub-bullets) within completed tasks in preview mode */
+body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item.is-checked ul,
+body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item.is-checked ol {
+    display: none;
+}
