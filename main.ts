@@ -3,11 +3,13 @@ import { App, Plugin, addIcon, PluginManifest, PluginSettingTab, Setting } from 
 interface TaskHiderSettings {
     hiddenState: boolean;
     incompleteSymbols: string[]; // symbols considered NOT completed in source view
+    invertRule?: boolean; // when true, hide only symbols listed above
 }
 
 const DEFAULT_SETTINGS: TaskHiderSettings = {
     hiddenState: true,
-    incompleteSymbols: []
+    incompleteSymbols: [],
+    invertRule: false
 };
 
 export default class TaskHiderPlugin extends Plugin {
@@ -28,13 +30,49 @@ export default class TaskHiderPlugin extends Plugin {
 	}
 
 	private buildDynamicCss(): string {
-		// Build a CSS rule for source view that hides any non-empty data-task
-		// except the explicitly configured incompleteSymbols and a single space.
+		// Build CSS rules that either:
+		// - Normal: hide completed tasks (and any non-empty data-task) except exceptions
+		// - Invert: hide only the symbols listed as exceptions
 		const exc = (this.settings.incompleteSymbols || []).map(s => s.trim()).filter(Boolean);
 		const escapeCssValue = (val: string) => val.replace(/\\/g, "\\\\").replace(/\"/g, '\\"');
-		const nots = ['[data-task=" "]', ...exc.map(s => `[data-task="${escapeCssValue(s)}"]`)];
-		const selector = `body.hide-completed-tasks .markdown-source-view .HyperMD-task-line[data-task]${nots.map(n => `:not(${n})`).join('')}`;
-		return `${selector} { display: none; }`;
+		const exceptionOnly = exc.map(s => `[data-task="${escapeCssValue(s)}"]`);
+		const includeUnchecked = ['[data-task=" "]', ...exceptionOnly];
+		const invert = !!this.settings.invertRule;
+
+		const selectors: string[] = [];
+
+		if (!invert) {
+			// Normal mode
+			// CM5
+			selectors.push(
+				`.markdown-source-view .HyperMD-task-line[data-task]${includeUnchecked.map(n => `:not(${n})`).join('')}`
+			);
+			// CM6
+			const cm6HasTask = `:has(.cm-formatting-task[data-task])`;
+			const cm6NotExceptions = includeUnchecked.map(n => `:not(:has(.cm-formatting-task${n}))`).join('');
+			selectors.push(`.markdown-source-view.mod-cm6 .cm-line${cm6HasTask}${cm6NotExceptions}`);
+			// Reading/Preview
+			['.markdown-preview-view', '.markdown-reading-view'].forEach(c => {
+				selectors.push(`${c} ul > li.task-list-item.is-checked${includeUnchecked.map(n => `:not(${n})`).join('')}`);
+			});
+		} else {
+			// Invert mode: hide only the listed symbols
+			if (exceptionOnly.length === 0) {
+				return '';
+			}
+			// CM5
+			exceptionOnly.forEach(n => selectors.push(`.markdown-source-view .HyperMD-task-line${n}`));
+			// CM6
+			exceptionOnly.forEach(n => selectors.push(`.markdown-source-view.mod-cm6 .cm-line:has(.cm-formatting-task${n})`));
+			// Reading/Preview
+			['.markdown-preview-view', '.markdown-reading-view'].forEach(c => {
+				exceptionOnly.forEach(n => selectors.push(`${c} ul > li.task-list-item${n}`));
+			});
+		}
+
+		if (selectors.length === 0) return '';
+		const all = selectors.map(sel => `body.hide-completed-tasks ${sel}`).join(', ');
+		return `${all} { display: none; }`;
 	}
 
 	private applyDynamicCss() {
@@ -53,19 +91,20 @@ export default class TaskHiderPlugin extends Plugin {
 		this.applyDynamicCss();
 	}
 
-	async loadSettings() {
-		const data = await this.loadData();
-		// Backward compatibility with old shape { hiddenState: boolean }
-		if (data) {
-			this.settings = {
-				...DEFAULT_SETTINGS,
-				hiddenState: typeof data.hiddenState === 'boolean' ? data.hiddenState : DEFAULT_SETTINGS.hiddenState,
-				incompleteSymbols: Array.isArray(data.incompleteSymbols) ? data.incompleteSymbols : DEFAULT_SETTINGS.incompleteSymbols,
-			};
-		} else {
-			this.settings = { ...DEFAULT_SETTINGS };
-		}
-	}
+    async loadSettings() {
+        const data = await this.loadData();
+        // Backward compatibility with old shape { hiddenState: boolean }
+        if (data) {
+            this.settings = {
+                ...DEFAULT_SETTINGS,
+                hiddenState: typeof data.hiddenState === 'boolean' ? data.hiddenState : DEFAULT_SETTINGS.hiddenState,
+                incompleteSymbols: Array.isArray(data.incompleteSymbols) ? data.incompleteSymbols : DEFAULT_SETTINGS.incompleteSymbols,
+                invertRule: typeof data.invertRule === 'boolean' ? data.invertRule : DEFAULT_SETTINGS.invertRule,
+            };
+        } else {
+            this.settings = { ...DEFAULT_SETTINGS };
+        }
+    }
 
 	async onload() {
 		console.log('loading completed-task-display plugin');
@@ -117,7 +156,7 @@ class TaskHiderSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Unchecked symbols (source view)')
-            .setDesc('Comma- or space-separated list of symbols to treat as NOT completed in source mode. Example: !, ?, -')
+            .setDesc('Comma- or space-separated symbols. Normal: these stay visible (not completed). Invert rule: these are hidden. Example: !, ?, -')
             .addText(text => {
                 const current = (this.plugin.settings.incompleteSymbols || []).join(', ');
                 text.setPlaceholder('!, ?, -')
@@ -128,6 +167,18 @@ class TaskHiderSettingTab extends PluginSettingTab {
                             .map(s => s.trim())
                             .filter(Boolean);
                         this.plugin.settings.incompleteSymbols = parts;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName('Invert rule')
+            .setDesc('Hide items whose checkbox symbol matches the list above (instead of keeping them visible). Applies to both reading and source views.')
+            .addToggle(toggle => {
+                toggle
+                    .setValue(Boolean(this.plugin.settings.invertRule))
+                    .onChange(async (value) => {
+                        this.plugin.settings.invertRule = value;
                         await this.plugin.saveSettings();
                     });
             });

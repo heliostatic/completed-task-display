@@ -1,8 +1,4 @@
-body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item.is-checked {
-  display: none;
-}
-
 /*
- The source view rule (for .HyperMD-task-line) is injected dynamically
+ Preview/reading view and source-view rules are injected dynamically
  from main.ts to support user-defined exception symbols.
 */
