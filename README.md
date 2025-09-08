@@ -3,7 +3,8 @@
 This is a plugin for [Obsidian](https://obsidian.md) that allows you to toggle the display of completed tasks in markdown preview mode.
 
 ### Features
-- A new button in the ribbon that allows the global hiding or showing of completed tasks in preview mode.
+- Ribbon button to hide/show completed tasks globally.
+- Settings to define exception symbols (source view) that are treated as NOT completed (e.g. `!` so `- [!]` stays visible).
  
 ### Demo
 ![](demo-assets/ribbon-button.gif)
