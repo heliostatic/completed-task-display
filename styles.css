@@ -1,5 +1,13 @@
-body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item.is-checked,
-body.hide-completed-tasks .markdown-source-view .HyperMD-task-line[data-task]:not([data-task=" "]) {
+/* Hide completed tasks in preview mode */
+body.hide-completed-tasks
+    .markdown-preview-view
+    ul
+    > li.task-list-item.is-checked {
     display: none;
-    }
-}"])
+}
+
+/* Hide completed tasks in edit/source mode */
+body.hide-completed-tasks
+    .cm-line.HyperMD-task-line[data-task]:not([data-task=" "]) {
+    display: none !important;
+}
