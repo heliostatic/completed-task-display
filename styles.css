@@ -6,8 +6,10 @@ body.hide-completed-tasks
     display: none;
 }
 
-/* Hide completed tasks in edit/source mode */
+/* Hide completed tasks in edit/source mode - only [x] and [X] */
 body.hide-completed-tasks
-    .cm-line.HyperMD-task-line[data-task]:not([data-task=" "]) {
+    .cm-line.HyperMD-task-line[data-task="x"],
+body.hide-completed-tasks
+    .cm-line.HyperMD-task-line[data-task="X"] {
     display: none !important;
 }
