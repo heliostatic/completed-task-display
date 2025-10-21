@@ -1,6 +1,6 @@
 {
   "name": "completed-task-display",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Provides a button in the ribbon to hide or display completed tasks",
   "main": "main.js",
   "type": "module",
