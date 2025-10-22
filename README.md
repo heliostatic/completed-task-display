@@ -8,7 +8,9 @@ An [Obsidian](https://obsidian.md) plugin that allows you to toggle the visibili
 - **Ribbon button** - Quick access from the Obsidian ribbon
 - **Command palette** - Use `Toggle Completed Task View` command
 - **Status bar indicator** - Shows current state (Hiding/Showing Completed Tasks)
-- **Persistent state** - Remembers your preference between sessions
+- **Settings panel** - Configure status bar visibility and sub-bullet hiding
+- **Hide sub-bullets** - Optionally hide indented items beneath completed tasks (Edit/Live Preview mode only)
+- **Persistent state** - Remembers your preferences between sessions
 - **Custom task status support** - Only hides `[x]` and `[X]`, preserving custom statuses like `[?]`, `[!]`, `[/]`
 - **Cross-platform** - Works on desktop and mobile
 
@@ -59,6 +61,20 @@ All other task statuses remain visible:
 - `[/]` - In-progress task
 - `[-]` - Cancelled task
 - Any other custom status
+
+### Settings
+
+Access settings via Settings → Community Plugins → Completed Task Display:
+
+**Show status bar message**
+- Toggle the status bar indicator on/off
+- Shows "Hiding/Showing Completed Tasks" in the status bar
+
+**Hide sub-bullets** (Edit/Live Preview mode only)
+- When enabled, hides indented items (sub-bullets) beneath completed tasks
+- Only works in Edit and Live Preview modes
+- In Reading view, sub-bullets are automatically hidden with their parent task
+- Useful for cleaning up nested task lists while editing
 
 ## Development
 

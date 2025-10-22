@@ -1,15 +1,23 @@
-/* Hide completed tasks in preview mode */
+/* Hide completed tasks in preview mode - only [x] and [X] */
 body.hide-completed-tasks
     .markdown-preview-view
     ul
-    > li.task-list-item.is-checked {
+    > li.task-list-item[data-task="x"],
+body.hide-completed-tasks
+    .markdown-preview-view
+    ul
+    > li.task-list-item[data-task="X"] {
     display: none;
 }
 
 /* Hide sub-bullets under completed tasks in preview mode */
 body.hide-completed-tasks.hide-sub-bullets
     .markdown-preview-view
-    li.task-list-item.is-checked
+    li.task-list-item[data-task="x"]
+    ul,
+body.hide-completed-tasks.hide-sub-bullets
+    .markdown-preview-view
+    li.task-list-item[data-task="X"]
     ul {
     display: none;
 }

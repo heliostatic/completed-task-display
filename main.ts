@@ -268,7 +268,7 @@ class TaskHiderSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Hide sub-bullets")
       .setDesc(
-        "When a completed task is hidden, also hide any sub-bullets (indented items) beneath it",
+        "In Edit/Live Preview mode: hide sub-bullets (indented items) beneath completed tasks. Note: In Reading view, sub-bullets are automatically hidden with their parent task.",
       )
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.hideSubBullets).onChange(async (value) => {
