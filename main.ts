@@ -1,8 +1,18 @@
-import { App, Plugin, addIcon, PluginManifest } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting, addIcon, PluginManifest } from "obsidian";
+
+interface TaskHiderSettings {
+  hiddenState: boolean;
+  showStatusBar: boolean;
+}
+
+const DEFAULT_SETTINGS: TaskHiderSettings = {
+  hiddenState: true,
+  showStatusBar: true,
+};
 
 export default class TaskHiderPlugin extends Plugin {
   statusBar: HTMLElement | null = null;
-  hiddenState: boolean = true; // Default state
+  settings: TaskHiderSettings;
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -10,41 +20,35 @@ export default class TaskHiderPlugin extends Plugin {
   }
 
   async toggleCompletedTaskView() {
-    this.hiddenState = !this.hiddenState;
-    document.body.toggleClass("hide-completed-tasks", this.hiddenState);
+    this.settings.hiddenState = !this.settings.hiddenState;
+    document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
 
-    if (this.statusBar) {
+    if (this.statusBar && this.settings.showStatusBar) {
       this.statusBar.setText(
-        this.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
+        this.settings.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
       );
     }
 
-    await this.saveHiddenState();
+    await this.saveSettings();
   }
 
-  async saveHiddenState() {
-    await this.saveData({ hiddenState: this.hiddenState });
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
 
-  async loadHiddenState() {
-    try {
-      const data = await this.loadData();
-      if (data && typeof data.hiddenState === "boolean") {
-        this.hiddenState = data.hiddenState;
-      }
-    } catch (error) {
-      console.error("Failed to load hidden state, using default:", error);
-      this.hiddenState = true; // Reset to default on error
-    }
+  async saveSettings() {
+    await this.saveData(this.settings);
   }
 
   async onload() {
     try {
-      // Load saved state first
-      await this.loadHiddenState();
+      // Load settings first
+      await this.loadSettings();
 
-      // Create status bar item
-      this.statusBar = this.addStatusBarItem();
+      // Create status bar item if enabled
+      if (this.settings.showStatusBar) {
+        this.statusBar = this.addStatusBarItem();
+      }
 
       // Register command (available immediately)
       this.addCommand({
@@ -55,19 +59,22 @@ export default class TaskHiderPlugin extends Plugin {
         },
       });
 
+      // Add settings tab
+      this.addSettingTab(new TaskHiderSettingTab(this.app, this));
+
       // Wait for workspace to be ready before manipulating DOM and UI
       // This is especially important on mobile platforms like iOS
       this.app.workspace.onLayoutReady(() => {
         try {
-          // Update status bar
-          if (this.statusBar) {
+          // Update status bar if enabled
+          if (this.statusBar && this.settings.showStatusBar) {
             this.statusBar.setText(
-              this.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
+              this.settings.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
             );
           }
 
           // Apply initial state to DOM
-          document.body.toggleClass("hide-completed-tasks", this.hiddenState);
+          document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
 
           // Register icon and ribbon button
           addIcon("tasks", taskShowIcon);
@@ -80,13 +87,55 @@ export default class TaskHiderPlugin extends Plugin {
       });
     } catch (error) {
       console.error("Failed to load Completed Task Display plugin:", error);
-      // Ensure default state even if loading fails
-      this.hiddenState = true;
+      // Ensure default settings even if loading fails
+      this.settings = DEFAULT_SETTINGS;
     }
   }
 
   onunload() {
     // Cleanup handled automatically by Obsidian
+  }
+}
+
+class TaskHiderSettingTab extends PluginSettingTab {
+  plugin: TaskHiderPlugin;
+
+  constructor(app: App, plugin: TaskHiderPlugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+
+  display(): void {
+    const { containerEl } = this;
+
+    containerEl.empty();
+
+    containerEl.createEl("h2", { text: "Completed Task Display Settings" });
+
+    new Setting(containerEl)
+      .setName("Show status bar message")
+      .setDesc("Display 'Hiding/Showing Completed Tasks' in the status bar")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showStatusBar)
+          .onChange(async (value) => {
+            this.plugin.settings.showStatusBar = value;
+            await this.plugin.saveSettings();
+
+            // Update status bar visibility
+            if (value && !this.plugin.statusBar) {
+              this.plugin.statusBar = this.plugin.addStatusBarItem();
+              this.plugin.statusBar.setText(
+                this.plugin.settings.hiddenState
+                  ? "Hiding Completed Tasks"
+                  : "Showing Completed Tasks",
+              );
+            } else if (!value && this.plugin.statusBar) {
+              this.plugin.statusBar.remove();
+              this.plugin.statusBar = null;
+            }
+          }),
+      );
   }
 }
 
