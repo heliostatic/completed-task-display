@@ -3,11 +3,13 @@ import { App, Plugin, PluginSettingTab, Setting, addIcon, PluginManifest } from 
 interface TaskHiderSettings {
   hiddenState: boolean;
   showStatusBar: boolean;
+  hideSubBullets: boolean;
 }
 
 const DEFAULT_SETTINGS: TaskHiderSettings = {
   hiddenState: true,
   showStatusBar: true,
+  hideSubBullets: false,
 };
 
 export default class TaskHiderPlugin extends Plugin {
@@ -75,6 +77,7 @@ export default class TaskHiderPlugin extends Plugin {
 
           // Apply initial state to DOM
           document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
+          document.body.toggleClass("hide-sub-bullets", this.settings.hideSubBullets);
 
           // Register icon and ribbon button
           addIcon("tasks", taskShowIcon);
@@ -135,6 +138,21 @@ class TaskHiderSettingTab extends PluginSettingTab {
               this.plugin.statusBar = null;
             }
           }),
+      );
+
+    new Setting(containerEl)
+      .setName("Hide sub-bullets")
+      .setDesc(
+        "When a completed task is hidden, also hide any sub-bullets (indented items) beneath it",
+      )
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.hideSubBullets).onChange(async (value) => {
+          this.plugin.settings.hideSubBullets = value;
+          await this.plugin.saveSettings();
+
+          // Update DOM class
+          document.body.toggleClass("hide-sub-bullets", value);
+        }),
       );
   }
 }

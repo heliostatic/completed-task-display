@@ -6,10 +6,34 @@ body.hide-completed-tasks
     display: none;
 }
 
+/* Hide sub-bullets under completed tasks in preview mode */
+body.hide-completed-tasks.hide-sub-bullets
+    .markdown-preview-view
+    ul
+    > li.task-list-item.is-checked
+    + li:not(.task-list-item),
+body.hide-completed-tasks.hide-sub-bullets
+    .markdown-preview-view
+    ul
+    > li.task-list-item.is-checked
+    ~ li:not(.task-list-item) {
+    display: none;
+}
+
 /* Hide completed tasks in edit/source mode - only [x] and [X] */
 body.hide-completed-tasks
     .cm-line.HyperMD-task-line[data-task="x"],
 body.hide-completed-tasks
     .cm-line.HyperMD-task-line[data-task="X"] {
+    display: none !important;
+}
+
+/* Hide sub-bullets under completed tasks in edit mode */
+body.hide-completed-tasks.hide-sub-bullets
+    .cm-line.HyperMD-task-line[data-task="x"]
+    + .cm-line:not(.HyperMD-task-line),
+body.hide-completed-tasks.hide-sub-bullets
+    .cm-line.HyperMD-task-line[data-task="X"]
+    + .cm-line:not(.HyperMD-task-line) {
     display: none !important;
 }
