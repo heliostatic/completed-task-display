@@ -1,20 +1,24 @@
 import { App, Plugin, addIcon, PluginManifest } from "obsidian";
 
 export default class TaskHiderPlugin extends Plugin {
-  statusBar: HTMLElement;
+  statusBar: HTMLElement | null = null;
   hiddenState: boolean = true; // Default state
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
-    this.statusBar = this.addStatusBarItem();
+    // Status bar will be created in onload to ensure proper initialization on mobile
   }
 
   async toggleCompletedTaskView() {
     this.hiddenState = !this.hiddenState;
     document.body.toggleClass("hide-completed-tasks", this.hiddenState);
-    this.statusBar.setText(
-      this.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
-    );
+
+    if (this.statusBar) {
+      this.statusBar.setText(
+        this.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
+      );
+    }
+
     await this.saveHiddenState();
   }
 
@@ -35,24 +39,50 @@ export default class TaskHiderPlugin extends Plugin {
   }
 
   async onload() {
-    await this.loadHiddenState();
-    this.statusBar.setText(
-      this.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
-    );
-    document.body.toggleClass("hide-completed-tasks", this.hiddenState);
+    try {
+      // Load saved state first
+      await this.loadHiddenState();
 
-    addIcon("tasks", taskShowIcon);
-    this.addRibbonIcon("tasks", "Task Hider", () => {
-      this.toggleCompletedTaskView();
-    });
-    this.addCommand({
-      id: "toggle-completed-task-view",
-      name: "Toggle Completed Task View",
-      callback: () => {
-        this.toggleCompletedTaskView();
-      },
-    });
+      // Create status bar item
+      this.statusBar = this.addStatusBarItem();
 
+      // Register command (available immediately)
+      this.addCommand({
+        id: "toggle-completed-task-view",
+        name: "Toggle Completed Task View",
+        callback: () => {
+          this.toggleCompletedTaskView();
+        },
+      });
+
+      // Wait for workspace to be ready before manipulating DOM and UI
+      // This is especially important on mobile platforms like iOS
+      this.app.workspace.onLayoutReady(() => {
+        try {
+          // Update status bar
+          if (this.statusBar) {
+            this.statusBar.setText(
+              this.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
+            );
+          }
+
+          // Apply initial state to DOM
+          document.body.toggleClass("hide-completed-tasks", this.hiddenState);
+
+          // Register icon and ribbon button
+          addIcon("tasks", taskShowIcon);
+          this.addRibbonIcon("tasks", "Task Hider", () => {
+            this.toggleCompletedTaskView();
+          });
+        } catch (error) {
+          console.error("Failed to initialize Completed Task Display UI:", error);
+        }
+      });
+    } catch (error) {
+      console.error("Failed to load Completed Task Display plugin:", error);
+      // Ensure default state even if loading fails
+      this.hiddenState = true;
+    }
   }
 
   onunload() {
