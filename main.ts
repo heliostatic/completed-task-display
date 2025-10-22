@@ -32,6 +32,9 @@ export default class TaskHiderPlugin extends Plugin {
       );
     }
 
+    // Update nested item visibility when main toggle changes
+    this.updateNestedItemVisibility();
+
     await this.saveSettings();
   }
 
@@ -48,10 +51,11 @@ export default class TaskHiderPlugin extends Plugin {
    * This handles hiding sub-bullets under completed tasks in the editor
    */
   updateNestedItemVisibility() {
-    if (!this.settings.hideSubBullets) {
-      // Remove all hide-nested-item classes if setting is disabled
+    if (!this.settings.hideSubBullets || !this.settings.hiddenState) {
+      // Remove all hide-nested-item classes and inline styles if settings are disabled
       document.querySelectorAll(".cm-line.hide-nested-item").forEach((el) => {
         el.removeClass("hide-nested-item");
+        (el as HTMLElement).style.display = "";
       });
       return;
     }
@@ -75,7 +79,6 @@ export default class TaskHiderPlugin extends Plugin {
           (line.getAttribute("data-task") === "x" || line.getAttribute("data-task") === "X");
 
         if (isCompletedTask) {
-          // Get the indentation level of the completed task
           const taskIndent = this.getIndentLevel(line);
 
           // Hide all subsequent lines that are more indented
@@ -90,6 +93,11 @@ export default class TaskHiderPlugin extends Plugin {
 
             // This line is more indented, so it's a child - hide it
             nextLine.addClass("hide-nested-item");
+
+            // Set inline style to hide the element
+            if (this.settings.hideSubBullets && this.settings.hiddenState) {
+              (nextLine as HTMLElement).style.display = "none";
+            }
           }
         }
       }
