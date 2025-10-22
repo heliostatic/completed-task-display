@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: TaskHiderSettings = {
 export default class TaskHiderPlugin extends Plugin {
   statusBar: HTMLElement | null = null;
   settings: TaskHiderSettings;
+  private mutationObserver: MutationObserver | null = null;
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -40,6 +41,110 @@ export default class TaskHiderPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  /**
+   * Update nested item visibility in edit mode based on parent task completion
+   * This handles hiding sub-bullets under completed tasks in the editor
+   */
+  updateNestedItemVisibility() {
+    if (!this.settings.hideSubBullets) {
+      // Remove all hide-nested-item classes if setting is disabled
+      document.querySelectorAll(".cm-line.hide-nested-item").forEach((el) => {
+        el.removeClass("hide-nested-item");
+      });
+      return;
+    }
+
+    // Find all editor content containers
+    const editors = document.querySelectorAll(".cm-content");
+
+    editors.forEach((editor) => {
+      const lines = Array.from(editor.querySelectorAll(".cm-line"));
+
+      // First, remove all existing hide-nested-item classes
+      lines.forEach((line) => line.removeClass("hide-nested-item"));
+
+      // Process each line to find completed tasks and hide their nested items
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i] as HTMLElement;
+
+        // Check if this is a completed task
+        const isCompletedTask =
+          line.classList.contains("HyperMD-task-line") &&
+          (line.getAttribute("data-task") === "x" || line.getAttribute("data-task") === "X");
+
+        if (isCompletedTask) {
+          // Get the indentation level of the completed task
+          const taskIndent = this.getIndentLevel(line);
+
+          // Hide all subsequent lines that are more indented
+          for (let j = i + 1; j < lines.length; j++) {
+            const nextLine = lines[j] as HTMLElement;
+            const nextIndent = this.getIndentLevel(nextLine);
+
+            // If we hit a line with equal or less indentation, stop
+            if (nextIndent <= taskIndent) {
+              break;
+            }
+
+            // This line is more indented, so it's a child - hide it
+            nextLine.addClass("hide-nested-item");
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Get the indentation level of a line in the editor
+   * Returns the text-indent value as a number (e.g., -75px returns 75)
+   */
+  private getIndentLevel(line: HTMLElement): number {
+    const style = window.getComputedStyle(line);
+    const textIndent = style.textIndent;
+
+    // Extract numeric value from text-indent (e.g., "-75px" -> 75)
+    const match = textIndent.match(/-?(\d+)/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+
+    // Check for cm-hmd-list-indent classes as fallback
+    const indentMatch = line.className.match(/cm-hmd-list-indent-(\d+)/);
+    if (indentMatch) {
+      return parseInt(indentMatch[1], 10) * 40; // Approximate indent level
+    }
+
+    return 0;
+  }
+
+  /**
+   * Start observing DOM changes to update nested item visibility
+   */
+  private startObservingEditor() {
+    // Disconnect existing observer if any
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+    }
+
+    // Create a new observer to watch for editor changes
+    this.mutationObserver = new MutationObserver(() => {
+      if (this.settings.hideSubBullets) {
+        this.updateNestedItemVisibility();
+      }
+    });
+
+    // Observe the workspace for changes
+    const workspaceEl = document.querySelector(".workspace");
+    if (workspaceEl) {
+      this.mutationObserver.observe(workspaceEl, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-task"],
+      });
+    }
   }
 
   async onload() {
@@ -84,6 +189,14 @@ export default class TaskHiderPlugin extends Plugin {
           this.addRibbonIcon("tasks", "Task Hider", () => {
             this.toggleCompletedTaskView();
           });
+
+          // Start observing editor changes for sub-bullets hiding
+          this.startObservingEditor();
+
+          // Initial update of nested item visibility
+          if (this.settings.hideSubBullets) {
+            this.updateNestedItemVisibility();
+          }
         } catch (error) {
           console.error("Failed to initialize Completed Task Display UI:", error);
         }
@@ -96,7 +209,11 @@ export default class TaskHiderPlugin extends Plugin {
   }
 
   onunload() {
-    // Cleanup handled automatically by Obsidian
+    // Disconnect mutation observer
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
   }
 }
 
@@ -152,6 +269,9 @@ class TaskHiderSettingTab extends PluginSettingTab {
 
           // Update DOM class
           document.body.toggleClass("hide-sub-bullets", value);
+
+          // Update nested item visibility in edit mode
+          this.plugin.updateNestedItemVisibility();
         }),
       );
   }
