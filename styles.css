@@ -1,16 +1,19 @@
 /* Hide completed tasks in preview/reading mode - only [x] and [X] */
-.markdown-preview-view ul > li.task-list-item[data-task="x"],
-.markdown-preview-view ul > li.task-list-item[data-task="X"] {
+/* Note: Edit mode toggling is handled by CodeMirror extension, so no body class needed there */
+/* But preview mode needs the body class to respect the toggle */
+body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item[data-task="x"],
+body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item[data-task="X"] {
     display: none;
 }
 
 /* Hide sub-bullets under completed tasks in preview/reading mode */
-.markdown-preview-view li.task-list-item[data-task="x"] ul,
-.markdown-preview-view li.task-list-item[data-task="X"] ul {
+body.hide-completed-tasks .markdown-preview-view li.task-list-item[data-task="x"] ul,
+body.hide-completed-tasks .markdown-preview-view li.task-list-item[data-task="X"] ul {
     display: none;
 }
 
 /* Hide completed tasks in edit mode - applied via CodeMirror line decorations */
+/* Classes are only added when hiding is enabled, so no need for body class check */
 .cm-line.ctd-hide-completed-task {
     display: none !important;
 }

@@ -129,6 +129,9 @@ export default class TaskHiderPlugin extends Plugin {
   async toggleCompletedTaskView() {
     this.settings.hiddenState = !this.settings.hiddenState;
 
+    // Toggle body class for preview mode CSS
+    document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
+
     if (this.statusBar && this.settings.showStatusBar) {
       this.statusBar.setText(
         this.settings.hiddenState ? "Hiding Completed Tasks" : "Showing Completed Tasks",
@@ -210,6 +213,9 @@ export default class TaskHiderPlugin extends Plugin {
       // This is especially important on mobile platforms like iOS
       this.app.workspace.onLayoutReady(() => {
         try {
+          // Set initial body class for preview mode
+          document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
+
           // Update status bar if enabled
           if (this.statusBar && this.settings.showStatusBar) {
             this.statusBar.setText(
