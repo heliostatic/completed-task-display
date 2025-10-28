@@ -16,9 +16,15 @@ body.hide-completed-tasks .markdown-preview-view li.task-list-item[data-task="X"
 /* Classes are only added when hiding is enabled, so no need for body class check */
 .cm-line.ctd-hide-completed-task {
     display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* Hide sub-bullets in edit mode - applied via CodeMirror line decorations */
 .cm-line.ctd-hide-sub-bullet {
     display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
