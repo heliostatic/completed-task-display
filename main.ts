@@ -1,14 +1,6 @@
-import { App, Plugin, PluginSettingTab, Setting, addIcon, PluginManifest, editorEditorField } from "obsidian";
-import {
-  EditorView,
-  Decoration,
-  DecorationSet,
-  ViewUpdate,
-  ViewPlugin,
-  PluginValue,
-} from "@codemirror/view";
-import { StateField, StateEffect, Extension, Facet, RangeSetBuilder } from "@codemirror/state";
-import { EditorState, Line } from "@codemirror/state";
+import { App, Plugin, PluginSettingTab, Setting, addIcon, PluginManifest } from "obsidian";
+import { EditorView, Decoration, DecorationSet } from "@codemirror/view";
+import { StateField, StateEffect, Extension, Facet, RangeSetBuilder, EditorState } from "@codemirror/state";
 
 interface TaskHiderSettings {
   hiddenState: boolean;
