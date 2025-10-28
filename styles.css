@@ -1,4 +1,4 @@
-/* Hide completed tasks in preview mode - only [x] and [X] */
+/* Hide completed tasks in preview/reading mode - only [x] and [X] */
 body.hide-completed-tasks
     .markdown-preview-view
     ul
@@ -10,7 +10,7 @@ body.hide-completed-tasks
     display: none;
 }
 
-/* Hide sub-bullets under completed tasks in preview mode */
+/* Hide sub-bullets under completed tasks in preview/reading mode */
 body.hide-completed-tasks.hide-sub-bullets
     .markdown-preview-view
     li.task-list-item[data-task="x"]
@@ -22,17 +22,4 @@ body.hide-completed-tasks.hide-sub-bullets
     display: none;
 }
 
-/* Hide completed tasks in edit/source mode - only [x] and [X] */
-body.hide-completed-tasks
-    .cm-line.HyperMD-task-line[data-task="x"],
-body.hide-completed-tasks
-    .cm-line.HyperMD-task-line[data-task="X"] {
-    display: none !important;
-    height: 0 !important;
-}
-
-/* Hide sub-bullets under completed tasks in edit mode - applied via JS */
-body.hide-completed-tasks.hide-sub-bullets .cm-line.hide-nested-item {
-    display: none !important;
-    height: 0 !important;
-}
+/* Edit mode hiding is now handled by CodeMirror decorations */

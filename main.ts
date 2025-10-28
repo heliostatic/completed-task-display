@@ -1,4 +1,14 @@
-import { App, Plugin, PluginSettingTab, Setting, addIcon, PluginManifest } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting, addIcon, PluginManifest, editorEditorField } from "obsidian";
+import {
+  EditorView,
+  Decoration,
+  DecorationSet,
+  ViewUpdate,
+  ViewPlugin,
+  PluginValue,
+} from "@codemirror/view";
+import { StateField, StateEffect, Extension, Facet, RangeSetBuilder } from "@codemirror/state";
+import { EditorState, Line } from "@codemirror/state";
 
 interface TaskHiderSettings {
   hiddenState: boolean;
@@ -12,10 +22,113 @@ const DEFAULT_SETTINGS: TaskHiderSettings = {
   hideSubBullets: false,
 };
 
+// Facet for providing settings to the CodeMirror extension
+const taskHiderSettingsFacet = Facet.define<TaskHiderSettings, TaskHiderSettings>({
+  combine: (values) => values[0] || DEFAULT_SETTINGS,
+});
+
+// StateField that provides decorations to hide completed tasks and sub-bullets
+const hideTasksField = StateField.define<DecorationSet>({
+  create(state): DecorationSet {
+    return buildHideDecorations(state);
+  },
+  update(oldDecorations, tr): DecorationSet {
+    // Rebuild decorations if document changed or settings changed
+    if (tr.docChanged || tr.effects.some((e) => e.is(reconfigureEffect))) {
+      return buildHideDecorations(tr.state);
+    }
+    // Otherwise, map the existing decorations to account for changes
+    return oldDecorations.map(tr.changes);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
+// Effect to trigger reconfiguration when settings change
+const reconfigureEffect = StateEffect.define<null>();
+
+/**
+ * Build decorations for hiding completed tasks and their sub-bullets
+ */
+function buildHideDecorations(state: EditorState): DecorationSet {
+  const settings = state.facet(taskHiderSettingsFacet);
+
+  if (!settings.hiddenState) {
+    return Decoration.none;
+  }
+
+  const builder = new RangeSetBuilder<Decoration>();
+  const doc = state.doc;
+  const linesToHide = new Set<number>();
+
+  // First pass: identify completed task lines and their sub-bullets
+  for (let lineNum = 1; lineNum <= doc.lines; lineNum++) {
+    const line = doc.line(lineNum);
+    const lineText = line.text;
+
+    // Check if this is a completed task line
+    const isCompletedTask = /^(\s*[-*+])\s+\[(x|X)\]/.test(lineText);
+
+    if (isCompletedTask) {
+      // Hide the completed task itself
+      linesToHide.add(lineNum);
+
+      // If hideSubBullets is enabled, hide nested items
+      if (settings.hideSubBullets) {
+        const taskIndent = getIndentLevelFromText(lineText);
+
+        // Look at subsequent lines to find sub-bullets
+        for (let subLineNum = lineNum + 1; subLineNum <= doc.lines; subLineNum++) {
+          const subLine = doc.line(subLineNum);
+          const subLineText = subLine.text;
+
+          // Skip empty lines
+          if (subLineText.trim() === "") {
+            continue;
+          }
+
+          const subIndent = getIndentLevelFromText(subLineText);
+
+          // If we hit a line with equal or less indentation, stop
+          if (subIndent <= taskIndent) {
+            break;
+          }
+
+          // This line is more indented, so it's a child - hide it
+          linesToHide.add(subLineNum);
+        }
+      }
+    }
+  }
+
+  // Second pass: create decorations for lines to hide
+  linesToHide.forEach((lineNum) => {
+    const line = doc.line(lineNum);
+    // Replace from start of line to end of line (including the newline)
+    builder.add(
+      line.from,
+      line.to,
+      Decoration.replace({})
+    );
+  });
+
+  return builder.finish();
+}
+
+/**
+ * Get indentation level from line text (count leading spaces/tabs)
+ */
+function getIndentLevelFromText(text: string): number {
+  const match = text.match(/^(\s*)/);
+  if (!match) return 0;
+
+  const whitespace = match[1];
+  // Count tabs as 4 spaces
+  return whitespace.replace(/\t/g, "    ").length;
+}
+
 export default class TaskHiderPlugin extends Plugin {
   statusBar: HTMLElement | null = null;
   settings: TaskHiderSettings;
-  private mutationObserver: MutationObserver | null = null;
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
@@ -24,7 +137,6 @@ export default class TaskHiderPlugin extends Plugin {
 
   async toggleCompletedTaskView() {
     this.settings.hiddenState = !this.settings.hiddenState;
-    document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
 
     if (this.statusBar && this.settings.showStatusBar) {
       this.statusBar.setText(
@@ -32,15 +144,8 @@ export default class TaskHiderPlugin extends Plugin {
       );
     }
 
-    // Update nested item visibility when main toggle changes
-    this.updateNestedItemVisibility();
-
-    // Hide or show completed task gutters
-    if (this.settings.hiddenState) {
-      this.hideCompletedTaskGutters();
-    } else {
-      this.restoreGutterElements();
-    }
+    // Update all editor instances with new settings
+    this.updateEditorExtensions();
 
     await this.saveSettings();
   }
@@ -54,186 +159,36 @@ export default class TaskHiderPlugin extends Plugin {
   }
 
   /**
-   * Update nested item visibility in edit mode based on parent task completion
-   * This handles hiding sub-bullets under completed tasks in the editor
+   * Create the CodeMirror extension with current settings
    */
-  updateNestedItemVisibility() {
-    if (!this.settings.hideSubBullets || !this.settings.hiddenState) {
-      // Remove all hide-nested-item classes and inline styles if settings are disabled
-      document.querySelectorAll(".cm-line.hide-nested-item").forEach((el) => {
-        el.removeClass("hide-nested-item");
-        (el as HTMLElement).style.display = "";
-      });
-      // Restore gutter elements
-      this.restoreGutterElements();
-      return;
-    }
+  createEditorExtension(): Extension {
+    return [
+      taskHiderSettingsFacet.of(this.settings),
+      hideTasksField,
+    ];
+  }
 
-    // Find all editor content containers
-    const editors = document.querySelectorAll(".cm-content");
-
-    editors.forEach((editor) => {
-      const lines = Array.from(editor.querySelectorAll(".cm-line"));
-
-      // First, remove all existing hide-nested-item classes
-      lines.forEach((line) => line.removeClass("hide-nested-item"));
-
-      // Restore all gutter elements before re-applying hiding
-      this.restoreGutterElements();
-
-      // Process each line to find completed tasks and hide their nested items
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i] as HTMLElement;
-
-        // Check if this is a completed task
-        const isCompletedTask =
-          line.classList.contains("HyperMD-task-line") &&
-          (line.getAttribute("data-task") === "x" || line.getAttribute("data-task") === "X");
-
-        if (isCompletedTask) {
-          const taskIndent = this.getIndentLevel(line);
-
-          // Hide all subsequent lines that are more indented
-          for (let j = i + 1; j < lines.length; j++) {
-            const nextLine = lines[j] as HTMLElement;
-            const nextIndent = this.getIndentLevel(nextLine);
-
-            // If we hit a line with equal or less indentation, stop
-            if (nextIndent <= taskIndent) {
-              break;
-            }
-
-            // This line is more indented, so it's a child - hide it
-            nextLine.addClass("hide-nested-item");
-
-            // Set inline style to hide the element
-            if (this.settings.hideSubBullets && this.settings.hiddenState) {
-              (nextLine as HTMLElement).style.display = "none";
-              // Also hide the corresponding gutter element (line number)
-              this.hideGutterElementForLine(nextLine);
-            }
-          }
+  /**
+   * Update all editor instances to use the new settings
+   */
+  updateEditorExtensions() {
+    // Get all markdown views and dispatch reconfigure effect
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view.getViewType() === "markdown") {
+        const view = (leaf.view as any).editor;
+        if (view && view.cm) {
+          const cm = view.cm as EditorView;
+          cm.dispatch({
+            effects: [
+              reconfigureEffect.of(null),
+              StateEffect.reconfigure.of(this.createEditorExtension()),
+            ],
+          });
         }
       }
     });
   }
 
-  /**
-   * Get the indentation level of a line in the editor
-   * Returns the text-indent value as a number (e.g., -75px returns 75)
-   */
-  private getIndentLevel(line: HTMLElement): number {
-    const style = window.getComputedStyle(line);
-    const textIndent = style.textIndent;
-
-    // Extract numeric value from text-indent (e.g., "-75px" -> 75)
-    const match = textIndent.match(/-?(\d+)/);
-    if (match) {
-      return parseInt(match[1], 10);
-    }
-
-    // Check for cm-hmd-list-indent classes as fallback
-    const indentMatch = line.className.match(/cm-hmd-list-indent-(\d+)/);
-    if (indentMatch) {
-      return parseInt(indentMatch[1], 10) * 40; // Approximate indent level
-    }
-
-    return 0;
-  }
-
-  /**
-   * Hide the gutter element (line number) for a given line
-   */
-  private hideGutterElementForLine(line: HTMLElement) {
-    // Find the editor containing this line
-    const editorView = line.closest(".cm-editor");
-    if (!editorView) return;
-
-    // Find the gutter container
-    const gutters = editorView.querySelectorAll(".cm-gutters .cm-gutter");
-    if (!gutters.length) return;
-
-    // Get the line index within the editor
-    const content = line.closest(".cm-content");
-    if (!content) return;
-
-    const allLines = Array.from(content.querySelectorAll(".cm-line"));
-    const lineIndex = allLines.indexOf(line);
-    if (lineIndex === -1) return;
-
-    // Hide the corresponding gutter element in each gutter
-    gutters.forEach((gutter) => {
-      const gutterElements = gutter.querySelectorAll(".cm-gutterElement");
-      if (gutterElements[lineIndex]) {
-        const gutterEl = gutterElements[lineIndex] as HTMLElement;
-        gutterEl.style.display = "none";
-        gutterEl.style.height = "0px";
-        gutterEl.setAttribute("data-hidden-by-plugin", "true");
-      }
-    });
-  }
-
-  /**
-   * Restore all hidden gutter elements
-   */
-  private restoreGutterElements() {
-    document.querySelectorAll(".cm-gutterElement[data-hidden-by-plugin]").forEach((el) => {
-      const gutterEl = el as HTMLElement;
-      gutterEl.style.display = "";
-      gutterEl.style.height = "";
-      gutterEl.removeAttribute("data-hidden-by-plugin");
-    });
-  }
-
-  /**
-   * Hide gutter elements for all completed tasks in edit mode
-   */
-  private hideCompletedTaskGutters() {
-    if (!this.settings.hiddenState) {
-      return;
-    }
-
-    // Find all completed task lines
-    const completedTasks = document.querySelectorAll(
-      ".cm-line.HyperMD-task-line[data-task='x'], .cm-line.HyperMD-task-line[data-task='X']"
-    );
-
-    completedTasks.forEach((line) => {
-      this.hideGutterElementForLine(line as HTMLElement);
-    });
-  }
-
-  /**
-   * Start observing DOM changes to update nested item visibility
-   */
-  private startObservingEditor() {
-    // Disconnect existing observer if any
-    if (this.mutationObserver) {
-      this.mutationObserver.disconnect();
-    }
-
-    // Create a new observer to watch for editor changes
-    this.mutationObserver = new MutationObserver(() => {
-      if (this.settings.hideSubBullets) {
-        this.updateNestedItemVisibility();
-      }
-      // Always hide completed task gutters when tasks are hidden
-      if (this.settings.hiddenState) {
-        this.hideCompletedTaskGutters();
-      }
-    });
-
-    // Observe the workspace for changes
-    const workspaceEl = document.querySelector(".workspace");
-    if (workspaceEl) {
-      this.mutationObserver.observe(workspaceEl, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["data-task"],
-      });
-    }
-  }
 
   async onload() {
     try {
@@ -257,6 +212,9 @@ export default class TaskHiderPlugin extends Plugin {
       // Add settings tab
       this.addSettingTab(new TaskHiderSettingTab(this.app, this));
 
+      // Register CodeMirror extension for hiding tasks
+      this.registerEditorExtension(this.createEditorExtension());
+
       // Wait for workspace to be ready before manipulating DOM and UI
       // This is especially important on mobile platforms like iOS
       this.app.workspace.onLayoutReady(() => {
@@ -268,28 +226,11 @@ export default class TaskHiderPlugin extends Plugin {
             );
           }
 
-          // Apply initial state to DOM
-          document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
-          document.body.toggleClass("hide-sub-bullets", this.settings.hideSubBullets);
-
           // Register icon and ribbon button
           addIcon("tasks", taskShowIcon);
           this.addRibbonIcon("tasks", "Task Hider", () => {
             this.toggleCompletedTaskView();
           });
-
-          // Start observing editor changes for sub-bullets hiding
-          this.startObservingEditor();
-
-          // Initial update of nested item visibility
-          if (this.settings.hideSubBullets) {
-            this.updateNestedItemVisibility();
-          }
-
-          // Initial hiding of completed task gutters
-          if (this.settings.hiddenState) {
-            this.hideCompletedTaskGutters();
-          }
         } catch (error) {
           console.error("Failed to initialize Completed Task Display UI:", error);
         }
@@ -302,11 +243,7 @@ export default class TaskHiderPlugin extends Plugin {
   }
 
   onunload() {
-    // Disconnect mutation observer
-    if (this.mutationObserver) {
-      this.mutationObserver.disconnect();
-      this.mutationObserver = null;
-    }
+    // CodeMirror extensions are automatically cleaned up by Obsidian
   }
 }
 
@@ -360,11 +297,8 @@ class TaskHiderSettingTab extends PluginSettingTab {
           this.plugin.settings.hideSubBullets = value;
           await this.plugin.saveSettings();
 
-          // Update DOM class
-          document.body.toggleClass("hide-sub-bullets", value);
-
-          // Update nested item visibility in edit mode
-          this.plugin.updateNestedItemVisibility();
+          // Update all editor extensions with new settings
+          this.plugin.updateEditorExtensions();
         }),
       );
   }
