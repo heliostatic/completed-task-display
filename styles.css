@@ -28,9 +28,11 @@ body.hide-completed-tasks
 body.hide-completed-tasks
     .cm-line.HyperMD-task-line[data-task="X"] {
     display: none !important;
+    height: 0 !important;
 }
 
 /* Hide sub-bullets under completed tasks in edit mode - applied via JS */
 body.hide-completed-tasks.hide-sub-bullets .cm-line.hide-nested-item {
     display: none !important;
+    height: 0 !important;
 }

@@ -35,6 +35,13 @@ export default class TaskHiderPlugin extends Plugin {
     // Update nested item visibility when main toggle changes
     this.updateNestedItemVisibility();
 
+    // Hide or show completed task gutters
+    if (this.settings.hiddenState) {
+      this.hideCompletedTaskGutters();
+    } else {
+      this.restoreGutterElements();
+    }
+
     await this.saveSettings();
   }
 
@@ -57,6 +64,8 @@ export default class TaskHiderPlugin extends Plugin {
         el.removeClass("hide-nested-item");
         (el as HTMLElement).style.display = "";
       });
+      // Restore gutter elements
+      this.restoreGutterElements();
       return;
     }
 
@@ -68,6 +77,9 @@ export default class TaskHiderPlugin extends Plugin {
 
       // First, remove all existing hide-nested-item classes
       lines.forEach((line) => line.removeClass("hide-nested-item"));
+
+      // Restore all gutter elements before re-applying hiding
+      this.restoreGutterElements();
 
       // Process each line to find completed tasks and hide their nested items
       for (let i = 0; i < lines.length; i++) {
@@ -97,6 +109,8 @@ export default class TaskHiderPlugin extends Plugin {
             // Set inline style to hide the element
             if (this.settings.hideSubBullets && this.settings.hiddenState) {
               (nextLine as HTMLElement).style.display = "none";
+              // Also hide the corresponding gutter element (line number)
+              this.hideGutterElementForLine(nextLine);
             }
           }
         }
@@ -128,6 +142,68 @@ export default class TaskHiderPlugin extends Plugin {
   }
 
   /**
+   * Hide the gutter element (line number) for a given line
+   */
+  private hideGutterElementForLine(line: HTMLElement) {
+    // Find the editor containing this line
+    const editorView = line.closest(".cm-editor");
+    if (!editorView) return;
+
+    // Find the gutter container
+    const gutters = editorView.querySelectorAll(".cm-gutters .cm-gutter");
+    if (!gutters.length) return;
+
+    // Get the line index within the editor
+    const content = line.closest(".cm-content");
+    if (!content) return;
+
+    const allLines = Array.from(content.querySelectorAll(".cm-line"));
+    const lineIndex = allLines.indexOf(line);
+    if (lineIndex === -1) return;
+
+    // Hide the corresponding gutter element in each gutter
+    gutters.forEach((gutter) => {
+      const gutterElements = gutter.querySelectorAll(".cm-gutterElement");
+      if (gutterElements[lineIndex]) {
+        const gutterEl = gutterElements[lineIndex] as HTMLElement;
+        gutterEl.style.display = "none";
+        gutterEl.style.height = "0px";
+        gutterEl.setAttribute("data-hidden-by-plugin", "true");
+      }
+    });
+  }
+
+  /**
+   * Restore all hidden gutter elements
+   */
+  private restoreGutterElements() {
+    document.querySelectorAll(".cm-gutterElement[data-hidden-by-plugin]").forEach((el) => {
+      const gutterEl = el as HTMLElement;
+      gutterEl.style.display = "";
+      gutterEl.style.height = "";
+      gutterEl.removeAttribute("data-hidden-by-plugin");
+    });
+  }
+
+  /**
+   * Hide gutter elements for all completed tasks in edit mode
+   */
+  private hideCompletedTaskGutters() {
+    if (!this.settings.hiddenState) {
+      return;
+    }
+
+    // Find all completed task lines
+    const completedTasks = document.querySelectorAll(
+      ".cm-line.HyperMD-task-line[data-task='x'], .cm-line.HyperMD-task-line[data-task='X']"
+    );
+
+    completedTasks.forEach((line) => {
+      this.hideGutterElementForLine(line as HTMLElement);
+    });
+  }
+
+  /**
    * Start observing DOM changes to update nested item visibility
    */
   private startObservingEditor() {
@@ -140,6 +216,10 @@ export default class TaskHiderPlugin extends Plugin {
     this.mutationObserver = new MutationObserver(() => {
       if (this.settings.hideSubBullets) {
         this.updateNestedItemVisibility();
+      }
+      // Always hide completed task gutters when tasks are hidden
+      if (this.settings.hiddenState) {
+        this.hideCompletedTaskGutters();
       }
     });
 
@@ -204,6 +284,11 @@ export default class TaskHiderPlugin extends Plugin {
           // Initial update of nested item visibility
           if (this.settings.hideSubBullets) {
             this.updateNestedItemVisibility();
+          }
+
+          // Initial hiding of completed task gutters
+          if (this.settings.hiddenState) {
+            this.hideCompletedTaskGutters();
           }
         } catch (error) {
           console.error("Failed to initialize Completed Task Display UI:", error);
