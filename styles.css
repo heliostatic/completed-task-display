@@ -1,25 +1,21 @@
 /* Hide completed tasks in preview/reading mode - only [x] and [X] */
-body.hide-completed-tasks
-    .markdown-preview-view
-    ul
-    > li.task-list-item[data-task="x"],
-body.hide-completed-tasks
-    .markdown-preview-view
-    ul
-    > li.task-list-item[data-task="X"] {
+.markdown-preview-view ul > li.task-list-item[data-task="x"],
+.markdown-preview-view ul > li.task-list-item[data-task="X"] {
     display: none;
 }
 
 /* Hide sub-bullets under completed tasks in preview/reading mode */
-body.hide-completed-tasks.hide-sub-bullets
-    .markdown-preview-view
-    li.task-list-item[data-task="x"]
-    ul,
-body.hide-completed-tasks.hide-sub-bullets
-    .markdown-preview-view
-    li.task-list-item[data-task="X"]
-    ul {
+.markdown-preview-view li.task-list-item[data-task="x"] ul,
+.markdown-preview-view li.task-list-item[data-task="X"] ul {
     display: none;
 }
 
-/* Edit mode hiding is now handled by CodeMirror decorations */
+/* Hide completed tasks in edit mode - applied via CodeMirror line decorations */
+.cm-line.ctd-hide-completed-task {
+    display: none !important;
+}
+
+/* Hide sub-bullets in edit mode - applied via CodeMirror line decorations */
+.cm-line.ctd-hide-sub-bullet {
+    display: none !important;
+}

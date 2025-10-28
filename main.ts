@@ -19,15 +19,33 @@ const taskHiderSettingsFacet = Facet.define<TaskHiderSettings, TaskHiderSettings
   combine: (values) => values[0] || DEFAULT_SETTINGS,
 });
 
-// StateField that provides decorations to hide completed tasks and sub-bullets
+// Effect to trigger reconfiguration when settings change
+const reconfigureEffect = StateEffect.define<null>();
+
+/**
+ * Get indentation level from line text (count leading spaces/tabs)
+ */
+function getIndentLevelFromText(text: string): number {
+  const match = text.match(/^(\s*)/);
+  if (!match) return 0;
+
+  const whitespace = match[1];
+  // Count tabs as 4 spaces
+  return whitespace.replace(/\t/g, "    ").length;
+}
+
+/**
+ * StateField that tracks which lines should be hidden
+ * This adds line decorations (CSS classes) rather than replacing content
+ */
 const hideTasksField = StateField.define<DecorationSet>({
   create(state): DecorationSet {
-    return buildHideDecorations(state);
+    return buildLineDecorations(state);
   },
   update(oldDecorations, tr): DecorationSet {
     // Rebuild decorations if document changed or settings changed
     if (tr.docChanged || tr.effects.some((e) => e.is(reconfigureEffect))) {
-      return buildHideDecorations(tr.state);
+      return buildLineDecorations(tr.state);
     }
     // Otherwise, map the existing decorations to account for changes
     return oldDecorations.map(tr.changes);
@@ -35,13 +53,10 @@ const hideTasksField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-// Effect to trigger reconfiguration when settings change
-const reconfigureEffect = StateEffect.define<null>();
-
 /**
- * Build decorations for hiding completed tasks and their sub-bullets
+ * Build line decorations to mark which lines should be hidden via CSS
  */
-function buildHideDecorations(state: EditorState): DecorationSet {
+function buildLineDecorations(state: EditorState): DecorationSet {
   const settings = state.facet(taskHiderSettingsFacet);
 
   if (!settings.hiddenState) {
@@ -50,9 +65,8 @@ function buildHideDecorations(state: EditorState): DecorationSet {
 
   const builder = new RangeSetBuilder<Decoration>();
   const doc = state.doc;
-  const linesToHide = new Set<number>();
 
-  // First pass: identify completed task lines and their sub-bullets
+  // Identify completed task lines and their sub-bullets
   for (let lineNum = 1; lineNum <= doc.lines; lineNum++) {
     const line = doc.line(lineNum);
     const lineText = line.text;
@@ -61,10 +75,14 @@ function buildHideDecorations(state: EditorState): DecorationSet {
     const isCompletedTask = /^(\s*[-*+])\s+\[(x|X)\]/.test(lineText);
 
     if (isCompletedTask) {
-      // Hide the completed task itself
-      linesToHide.add(lineNum);
+      // Mark the completed task line for hiding
+      builder.add(
+        line.from,
+        line.from,
+        Decoration.line({ class: "ctd-hide-completed-task" })
+      );
 
-      // If hideSubBullets is enabled, hide nested items
+      // If hideSubBullets is enabled, mark nested items
       if (settings.hideSubBullets) {
         const taskIndent = getIndentLevelFromText(lineText);
 
@@ -85,37 +103,18 @@ function buildHideDecorations(state: EditorState): DecorationSet {
             break;
           }
 
-          // This line is more indented, so it's a child - hide it
-          linesToHide.add(subLineNum);
+          // This line is more indented, so it's a child - mark for hiding
+          builder.add(
+            subLine.from,
+            subLine.from,
+            Decoration.line({ class: "ctd-hide-sub-bullet" })
+          );
         }
       }
     }
   }
 
-  // Second pass: create decorations for lines to hide
-  linesToHide.forEach((lineNum) => {
-    const line = doc.line(lineNum);
-    // Replace from start of line to end of line (including the newline)
-    builder.add(
-      line.from,
-      line.to,
-      Decoration.replace({})
-    );
-  });
-
   return builder.finish();
-}
-
-/**
- * Get indentation level from line text (count leading spaces/tabs)
- */
-function getIndentLevelFromText(text: string): number {
-  const match = text.match(/^(\s*)/);
-  if (!match) return 0;
-
-  const whitespace = match[1];
-  // Count tabs as 4 spaces
-  return whitespace.replace(/\t/g, "    ").length;
 }
 
 export default class TaskHiderPlugin extends Plugin {
