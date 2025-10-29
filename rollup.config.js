@@ -5,31 +5,14 @@ import commonjs from '@rollup/plugin-commonjs';
 export default {
   input: 'main.ts',
   output: {
-    dir: '.',
+    file: 'main.js',
     sourcemap: 'inline',
     format: 'cjs',
     exports: 'default'
   },
   external: ['obsidian', '@codemirror/view', '@codemirror/state', '@codemirror/language'],
   plugins: [
-    typescript({
-      tsconfig: false,
-      compilerOptions: {
-        baseUrl: '.',
-        rootDir: '.',
-        inlineSourceMap: true,
-        inlineSources: true,
-        module: 'ESNext',
-        target: 'es5',
-        allowJs: true,
-        noImplicitAny: true,
-        moduleResolution: 'node',
-        importHelpers: true,
-        lib: ['dom', 'es5', 'scripthost', 'es2015'],
-        skipLibCheck: true,
-        noEmit: false
-      }
-    }),
+    typescript(),
     nodeResolve({browser: true}),
     commonjs(),
   ]
