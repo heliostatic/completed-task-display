@@ -1,7 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, addIcon, PluginManifest } from "obsidian";
 import { EditorView, Decoration, DecorationSet } from "@codemirror/view";
 import { StateField, StateEffect, Extension, Facet, RangeSetBuilder, EditorState } from "@codemirror/state";
-import { foldEffect, unfoldEffect } from "@codemirror/language";
 
 interface TaskHiderSettings {
   hiddenState: boolean;
@@ -37,7 +36,7 @@ function getIndentLevelFromText(text: string): number {
 
 /**
  * StateField that tracks which lines should be hidden
- * This adds line decorations (CSS classes) rather than replacing content
+ * This uses replace decorations to properly remove content from the editor layout
  */
 const hideTasksField = StateField.define<DecorationSet>({
   create(state): DecorationSet {
@@ -55,7 +54,8 @@ const hideTasksField = StateField.define<DecorationSet>({
 });
 
 /**
- * Build line decorations to mark which lines should be hidden via CSS
+ * Build replace decorations that actually hide the content
+ * This properly removes lines from the editor layout, fixing gutter alignment
  */
 function buildLineDecorations(state: EditorState): DecorationSet {
   const settings = state.facet(taskHiderSettingsFacet);
@@ -76,11 +76,12 @@ function buildLineDecorations(state: EditorState): DecorationSet {
     const isCompletedTask = /^(\s*[-*+])\s+\[(x|X)\]/.test(lineText);
 
     if (isCompletedTask) {
-      // Mark the completed task line for hiding
+      // Use a replace decoration to hide the entire line
+      // This properly removes it from the layout so the gutter aligns correctly
       builder.add(
         line.from,
-        line.from,
-        Decoration.line({ class: "ctd-hide-completed-task" })
+        line.to,
+        Decoration.replace({})
       );
 
       // If hideSubBullets is enabled, mark nested items
@@ -104,11 +105,11 @@ function buildLineDecorations(state: EditorState): DecorationSet {
             break;
           }
 
-          // This line is more indented, so it's a child - mark for hiding
+          // Hide the sub-bullet line
           builder.add(
             subLine.from,
-            subLine.from,
-            Decoration.line({ class: "ctd-hide-sub-bullet" })
+            subLine.to,
+            Decoration.replace({})
           );
         }
       }
@@ -174,111 +175,15 @@ export default class TaskHiderPlugin extends Plugin {
         if (view && view.cm) {
           const cm = view.cm as EditorView;
 
-          // If hiding is being disabled, unfold everything first
-          if (!this.settings.hiddenState) {
-            this.unfoldCompletedTasks(cm);
-          }
-
-          // Reconfigure the extension
+          // Just dispatch our custom effect to trigger a rebuild of decorations
+          // Don't use StateEffect.reconfigure as it would remove Obsidian's extensions
           cm.dispatch({
-            effects: [
-              reconfigureEffect.of(null),
-              StateEffect.reconfigure.of(this.createEditorExtension()),
-            ],
+            effects: [reconfigureEffect.of(null)],
           });
-
-          // If hiding is being enabled, fold completed tasks
-          if (this.settings.hiddenState) {
-            this.foldCompletedTasks(cm);
-          }
         }
       }
     });
   }
-
-  /**
-   * Fold all completed tasks in the editor using CodeMirror folding
-   */
-  foldCompletedTasks(view: EditorView) {
-    const state = view.state;
-    const doc = state.doc;
-    const effects: StateEffect<unknown>[] = [];
-
-    for (let lineNum = 1; lineNum <= doc.lines; lineNum++) {
-      const line = doc.line(lineNum);
-      const lineText = line.text;
-
-      // Check if this is a completed task line
-      const isCompletedTask = /^(\s*[-*+])\s+\[(x|X)\]/.test(lineText);
-
-      if (isCompletedTask) {
-        // Fold from start of line to end of line
-        effects.push(foldEffect.of({ from: line.from, to: line.to }));
-
-        // If hideSubBullets is enabled, fold nested items too
-        if (this.settings.hideSubBullets) {
-          const taskIndent = getIndentLevelFromText(lineText);
-
-          for (let subLineNum = lineNum + 1; subLineNum <= doc.lines; subLineNum++) {
-            const subLine = doc.line(subLineNum);
-            const subLineText = subLine.text;
-
-            if (subLineText.trim() === "") continue;
-
-            const subIndent = getIndentLevelFromText(subLineText);
-            if (subIndent <= taskIndent) break;
-
-            effects.push(foldEffect.of({ from: subLine.from, to: subLine.to }));
-          }
-        }
-      }
-    }
-
-    if (effects.length > 0) {
-      view.dispatch({ effects });
-    }
-  }
-
-  /**
-   * Unfold all completed tasks in the editor
-   */
-  unfoldCompletedTasks(view: EditorView) {
-    const state = view.state;
-    const doc = state.doc;
-    const effects: StateEffect<unknown>[] = [];
-
-    for (let lineNum = 1; lineNum <= doc.lines; lineNum++) {
-      const line = doc.line(lineNum);
-      const lineText = line.text;
-
-      const isCompletedTask = /^(\s*[-*+])\s+\[(x|X)\]/.test(lineText);
-
-      if (isCompletedTask) {
-        effects.push(unfoldEffect.of({ from: line.from, to: line.to }));
-
-        if (this.settings.hideSubBullets) {
-          const taskIndent = getIndentLevelFromText(lineText);
-
-          for (let subLineNum = lineNum + 1; subLineNum <= doc.lines; subLineNum++) {
-            const subLine = doc.line(subLineNum);
-            const subLineText = subLine.text;
-
-            if (subLineText.trim() === "") continue;
-
-            const subIndent = getIndentLevelFromText(subLineText);
-            if (subIndent <= taskIndent) break;
-
-            effects.push(unfoldEffect.of({ from: subLine.from, to: subLine.to }));
-          }
-        }
-      }
-    }
-
-    if (effects.length > 0) {
-      view.dispatch({ effects });
-    }
-  }
-
 
   async onload() {
     try {

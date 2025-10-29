@@ -12,19 +12,45 @@ body.hide-completed-tasks .markdown-preview-view li.task-list-item[data-task="X"
     display: none;
 }
 
-/* Hide completed tasks in edit mode - applied via CodeMirror line decorations */
-/* Classes are only added when hiding is enabled, so no need for body class check */
-.cm-line.ctd-hide-completed-task {
+/* Hide completed task lines that have been replaced by our decorations */
+/* When a replace decoration is active, the line has data-task="x" but NO label (checkbox was removed) */
+/* AND it only contains widget buffers and contenteditable=false spans (content was replaced) */
+.markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task="x"]:not(:has(label)):has([contenteditable="false"]),
+.markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task="X"]:not(:has(label)):has([contenteditable="false"]),
+.markdown-source-view .cm-content > div.cm-line[data-task="x"]:not(:has(label)):has([contenteditable="false"]),
+.markdown-source-view .cm-content > div.cm-line[data-task="X"]:not(:has(label)):has([contenteditable="false"]) {
     display: none !important;
     height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
+    line-height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
 }
 
-/* Hide sub-bullets in edit mode - applied via CodeMirror line decorations */
-.cm-line.ctd-hide-sub-bullet {
+/* Hide sub-bullets that have been replaced - must have HyperMD-list-line class and no visible content */
+/* This ensures we only hide actual list items, not random empty lines */
+.markdown-source-view.mod-cm6 .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):not(:has(.cm-list-1)):not(:has(.cm-list-2)):has([contenteditable="false"]),
+.markdown-source-view .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):not(:has(.cm-list-1)):not(:has(.cm-list-2)):has([contenteditable="false"]) {
     display: none !important;
     height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
+    line-height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+}
+
+/* Hide gutter line numbers for hidden lines (those with height: 0) */
+/* When replace decorations hide content, the gutter elements get height: 0 but are still rendered */
+.cm-lineNumbers .cm-gutterElement[style*="height: 0px"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
