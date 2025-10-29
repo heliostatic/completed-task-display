@@ -16,6 +16,7 @@ export default {
       tsconfig: false,
       compilerOptions: {
         baseUrl: '.',
+        rootDir: '.',
         inlineSourceMap: true,
         inlineSources: true,
         module: 'ESNext',
@@ -25,7 +26,8 @@ export default {
         moduleResolution: 'node',
         importHelpers: true,
         lib: ['dom', 'es5', 'scripthost', 'es2015'],
-        skipLibCheck: true
+        skipLibCheck: true,
+        noEmit: false
       }
     }),
     nodeResolve({browser: true}),
