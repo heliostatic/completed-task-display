@@ -52,10 +52,36 @@ if [[ "$CURRENT_BRANCH" != "main" && "$CURRENT_BRANCH" != "master" ]]; then
   fi
 fi
 
-# Get old and new version numbers from package.json
+# Get old version from package.json
 OLD_VERSION=$(node -p "require('./package.json').version")
-# Calculate new version using npm's semver logic (no git operations)
-NEW_VERSION=$(npm version "$BUMP_TYPE" --no-git-tag-version --dry-run 2>/dev/null | sed 's/^v//')
+
+# Calculate new version manually (npm version doesn't have a true dry-run)
+bump_version() {
+  local version=$1
+  local bump_type=$2
+
+  # Split version into components
+  IFS='.' read -r major minor patch <<< "$version"
+
+  case $bump_type in
+    major)
+      major=$((major + 1))
+      minor=0
+      patch=0
+      ;;
+    minor)
+      minor=$((minor + 1))
+      patch=0
+      ;;
+    patch)
+      patch=$((patch + 1))
+      ;;
+  esac
+
+  echo "$major.$minor.$patch"
+}
+
+NEW_VERSION=$(bump_version "$OLD_VERSION" "$BUMP_TYPE")
 
 echo "Current version: $OLD_VERSION"
 echo "New version:     $NEW_VERSION"
