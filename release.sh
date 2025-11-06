@@ -150,6 +150,12 @@ if command -v bd >/dev/null 2>&1; then
   BD_OUTPUT=$(bd create --json "Release v$NEW_VERSION" --type task --priority 0 --description "Cut release v$NEW_VERSION")
   ISSUE_ID=$(echo "$BD_OUTPUT" | awk -F'"' '/"id"/{print $4; exit}')
   echo "Created Beads issue: $ISSUE_ID"
+
+  # Commit the Beads file if it was modified
+  if [[ -n $(git status --porcelain .beads/) ]]; then
+    git add .beads/
+    git commit -m "chore: add Beads issue $ISSUE_ID for release v$NEW_VERSION"
+  fi
 else
   echo
   echo "Please create a Beads issue for this release in another terminal:"
@@ -206,6 +212,13 @@ if [[ -n "$ISSUE_ID" ]] && command -v bd >/dev/null 2>&1; then
   echo
   echo "Closing Beads issue $ISSUE_ID..."
   bd close "$ISSUE_ID" --reason "Release v$NEW_VERSION completed successfully"
+
+  # Commit the Beads file if it was modified
+  if [[ -n $(git status --porcelain .beads/) ]]; then
+    git add .beads/
+    git commit -m "chore: close Beads issue $ISSUE_ID after release v$NEW_VERSION"
+    git push origin "$CURRENT_BRANCH"
+  fi
 fi
 
 echo
