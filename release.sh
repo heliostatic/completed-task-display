@@ -98,15 +98,15 @@ if $DRY_RUN; then
 
   echo
   echo "=== Git tag that would be created ==="
-  echo "Tag: v$NEW_VERSION"
+  echo "Tag: $NEW_VERSION"
 
   echo
   echo "=== Beads issue that would be created ==="
   if command -v bd >/dev/null 2>&1; then
-    echo "Title: Release v$NEW_VERSION"
+    echo "Title: Release $NEW_VERSION"
     echo "Type: task"
     echo "Priority: P0"
-    echo "Description: Cut release v$NEW_VERSION"
+    echo "Description: Cut release $NEW_VERSION"
   else
     echo "(bd command not found - would prompt for manual creation)"
   fi
@@ -116,9 +116,9 @@ fi
 PREVIOUS_TAG=$(git tag --sort=-version:refname | head -n 1)
 echo
 echo "---------------------------------------------------------------------"
-echo "Release notes for v$NEW_VERSION:"
+echo "Release notes for $NEW_VERSION:"
 echo
-echo "## v$NEW_VERSION"
+echo "## $NEW_VERSION"
 echo
 echo "### Changes"
 if [[ -n "$PREVIOUS_TAG" ]]; then
@@ -126,7 +126,7 @@ if [[ -n "$PREVIOUS_TAG" ]]; then
   echo
   echo
   REPO_URL=$(git remote get-url origin | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
-  echo "**Full Changelog**: $REPO_URL/compare/$PREVIOUS_TAG...v$NEW_VERSION"
+  echo "**Full Changelog**: $REPO_URL/compare/$PREVIOUS_TAG...$NEW_VERSION"
 else
   git log --pretty=format:"- %s" HEAD
   echo
@@ -147,19 +147,19 @@ ISSUE_ID=""
 if command -v bd >/dev/null 2>&1; then
   echo
   echo "Creating Beads issue for this release..."
-  BD_OUTPUT=$(bd create --json "Release v$NEW_VERSION" --type task --priority 0 --description "Cut release v$NEW_VERSION")
+  BD_OUTPUT=$(bd create --json "Release $NEW_VERSION" --type task --priority 0 --description "Cut release $NEW_VERSION")
   ISSUE_ID=$(echo "$BD_OUTPUT" | awk -F'"' '/"id"/{print $4; exit}')
   echo "Created Beads issue: $ISSUE_ID"
 
   # Commit the Beads file if it was modified
   if [[ -n $(git status --porcelain .beads/) ]]; then
     git add .beads/
-    git commit -m "chore: add Beads issue $ISSUE_ID for release v$NEW_VERSION"
+    git commit -m "chore: add Beads issue $ISSUE_ID for release $NEW_VERSION"
   fi
 else
   echo
   echo "Please create a Beads issue for this release in another terminal:"
-  echo "bd create \"Release v$NEW_VERSION\" --type task --priority 0 --description \"Cut release v$NEW_VERSION\""
+  echo "bd create \"Release $NEW_VERSION\" --type task --priority 0 --description \"Cut release $NEW_VERSION\""
   read -rp "Press ENTER to continue after creating the issue..."
 fi
 
@@ -186,44 +186,44 @@ awk -v new_ver="$NEW_VERSION" '
 ' versions.json > versions.json.tmp && mv versions.json.tmp versions.json
 
 git add manifest.json versions.json
-COMMIT_MSG="chore: update manifests for v$NEW_VERSION"
+COMMIT_MSG="chore: update manifests for $NEW_VERSION"
 if [[ -n "$ISSUE_ID" ]]; then
-  COMMIT_MSG="chore($ISSUE_ID): update manifests for v$NEW_VERSION"
+  COMMIT_MSG="chore($ISSUE_ID): update manifests for $NEW_VERSION"
 fi
 git commit -m "$COMMIT_MSG"
 
-# Bump version in package.json and create git tag
+# Bump version in package.json and create git tag (without "v" prefix)
 echo
 echo "Bumping version in package.json and creating git tag..."
-TAG_MSG="Release v%s"
+TAG_MSG="Release %s"
 if [[ -n "$ISSUE_ID" ]]; then
   TAG_MSG="Release %s ($ISSUE_ID)"
 fi
-npm version "$BUMP_TYPE" -m "$TAG_MSG"
+npm version "$BUMP_TYPE" -m "$TAG_MSG" --tag-version-prefix=""
 
 # Push changes and tags to remote
 echo
 echo "Pushing changes and tags..."
 git push origin "$CURRENT_BRANCH"
-git push origin "v$NEW_VERSION"
+git push origin "$NEW_VERSION"
 
 # Close Beads issue if we created one
 if [[ -n "$ISSUE_ID" ]] && command -v bd >/dev/null 2>&1; then
   echo
   echo "Closing Beads issue $ISSUE_ID..."
-  bd close "$ISSUE_ID" --reason "Release v$NEW_VERSION completed successfully"
+  bd close "$ISSUE_ID" --reason "Release $NEW_VERSION completed successfully"
 
   # Commit the Beads file if it was modified
   if [[ -n $(git status --porcelain .beads/) ]]; then
     git add .beads/
-    git commit -m "chore: close Beads issue $ISSUE_ID after release v$NEW_VERSION"
+    git commit -m "chore: close Beads issue $ISSUE_ID after release $NEW_VERSION"
     git push origin "$CURRENT_BRANCH"
   fi
 fi
 
 echo
 echo "---------------------------------------------------------------------"
-echo "Release v$NEW_VERSION complete!"
+echo "Release $NEW_VERSION complete!"
 echo "The GitHub Action should now be running to create the release."
 REPO_URL=$(git remote get-url origin | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
 echo "Check: $REPO_URL/actions"
