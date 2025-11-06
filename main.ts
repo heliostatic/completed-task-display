@@ -6,12 +6,14 @@ interface TaskHiderSettings {
   hiddenState: boolean;
   showStatusBar: boolean;
   hideSubBullets: boolean;
+  hideMarkers: string[];
 }
 
 const DEFAULT_SETTINGS: TaskHiderSettings = {
   hiddenState: true,
   showStatusBar: true,
   hideSubBullets: false,
+  hideMarkers: ["X", "x"],
 };
 
 // Facet for providing settings to the CodeMirror extension
@@ -67,13 +69,18 @@ function buildLineDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const doc = state.doc;
 
+  // Build dynamic regex pattern from hideMarkers array
+  const markersPattern = settings.hideMarkers.map(m => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  // Check if line is a task with any of the configured markers
+  const taskRegex = new RegExp(`^(\\s*[-*+])\\s+\\[(${markersPattern})\\]`);
+
   // Identify completed task lines and their sub-bullets
   for (let lineNum = 1; lineNum <= doc.lines; lineNum++) {
     const line = doc.line(lineNum);
     const lineText = line.text;
 
-    // Check if this is a completed task line
-    const isCompletedTask = /^(\s*[-*+])\s+\[(x|X)\]/.test(lineText);
+    // Check if this is a completed task line using configured markers
+    const isCompletedTask = taskRegex.test(lineText);
 
     if (isCompletedTask) {
       // Use a replace decoration to hide the entire line
@@ -128,6 +135,68 @@ export default class TaskHiderPlugin extends Plugin {
     // Status bar will be created in onload to ensure proper initialization on mobile
   }
 
+  
+  /**
+   * Generate and inject dynamic CSS for both Preview Mode (Reading View) and Edit Mode (CM6).
+   * This ensures all markers in hideMarkers are matched with full selector scopes.
+   */
+  updateDynamicCSS() {
+    // Remove any previously injected style
+    document.querySelector("#taskhider-style")?.remove();
+
+    /** 
+     * ------ PREVIEW MODE CSS ------
+     * Build selectors for reading view, full scope required for each hideMarker
+     * Example: body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item[data-task="x"]
+     */
+    const previewSelectors = this.settings.hideMarkers.map(marker =>
+      `body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item[data-task="${marker}"]`
+    ).join(",\n");
+
+    const previewCSS = `
+    ${previewSelectors} {
+      display: none;
+    }
+    `;
+
+    /**
+     * ------ EDIT MODE CSS ------
+     * Build selectors for CM6 editor lines replaced by widget decorations
+     * Full scope repeated for each hideMarker so matching works properly
+     * We need two forms: one for .markdown-source-view.mod-cm6 and one for .markdown-source-view without mod-cm6
+     */
+    const editorSelectors = this.settings.hideMarkers.map(marker =>
+      `.markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task="${marker}"]:not(:has(label)):has([contenteditable="false"]),
+      .markdown-source-view .cm-content > div.cm-line[data-task="${marker}"]:not(:has(label)):has([contenteditable="false"])`
+    ).join(",\n");
+
+    const editorCSS = `
+      ${editorSelectors} {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        line-height: 0 !important;
+        overflow: hidden !important;
+        visibility: hidden !important;
+      }
+    `;
+
+    // Combine all CSS parts
+    const combinedCSS = `
+    ${previewCSS}
+    ${editorCSS}
+    `;
+
+    // Create style element and append to document head
+    const styleEl = document.createElement("style");
+    styleEl.id = "taskhider-style";
+    styleEl.textContent = combinedCSS;
+    document.head.appendChild(styleEl);
+  }
+  
   async toggleCompletedTaskView() {
     this.settings.hiddenState = !this.settings.hiddenState;
 
@@ -217,6 +286,8 @@ export default class TaskHiderPlugin extends Plugin {
           // Set initial body class for preview mode
           document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
 
+          this.updateDynamicCSS();
+
           // Update status bar if enabled
           if (this.statusBar && this.settings.showStatusBar) {
             this.statusBar.setText(
@@ -299,6 +370,16 @@ class TaskHiderSettingTab extends PluginSettingTab {
           this.plugin.updateEditorExtensions();
         }),
       );
+    new Setting(containerEl)
+      .setName('Hide Markers')
+      .setDesc('List of markers that indicate a completed task. Separate multiple markers with spaces.')
+      .addText(text => text
+        .setValue(this.plugin.settings.hideMarkers.join(' '))
+        .onChange(async (value) => {
+          this.plugin.settings.hideMarkers = value.split(' ').map(item => item.trim());
+          await this.plugin.saveSettings();
+          this.plugin.updateDynamicCSS();
+        }));
   }
 }
 
