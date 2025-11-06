@@ -6,9 +6,9 @@ body.hide-completed-tasks .markdown-preview-view ul > li.task-list-item[data-tas
     display: none;
 }
 
-/* Hide sub-bullets under completed tasks in preview/reading mode */
-body.hide-completed-tasks .markdown-preview-view li.task-list-item[data-task="x"] ul,
-body.hide-completed-tasks .markdown-preview-view li.task-list-item[data-task="X"] ul {
+/* Hide sub-bullets under completed tasks in preview/reading mode - only when hideSubBullets is enabled */
+body.hide-completed-tasks.hide-sub-bullets .markdown-preview-view li.task-list-item[data-task="x"] ul,
+body.hide-completed-tasks.hide-sub-bullets .markdown-preview-view li.task-list-item[data-task="X"] ul {
     display: none;
 }
 
@@ -30,10 +30,11 @@ body.hide-completed-tasks .markdown-preview-view li.task-list-item[data-task="X"
     visibility: hidden !important;
 }
 
-/* Hide sub-bullets that have been replaced - must have HyperMD-list-line class and no visible content */
-/* This ensures we only hide actual list items, not random empty lines */
-.markdown-source-view.mod-cm6 .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):not(:has(.cm-list-1)):not(:has(.cm-list-2)):has([contenteditable="false"]),
-.markdown-source-view .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):not(:has(.cm-list-1)):not(:has(.cm-list-2)):has([contenteditable="false"]) {
+/* Hide sub-bullets that have been replaced - only when both settings are enabled */
+/* Must have HyperMD-list-line class and contenteditable=false content (from replace decoration) */
+/* This ensures we only hide actual list items that have been replaced by decorations */
+body.hide-completed-tasks.hide-sub-bullets .markdown-source-view.mod-cm6 .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):has([contenteditable="false"]),
+body.hide-completed-tasks.hide-sub-bullets .markdown-source-view .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):has([contenteditable="false"]) {
     display: none !important;
     height: 0 !important;
     min-height: 0 !important;

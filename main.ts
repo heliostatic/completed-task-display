@@ -146,6 +146,14 @@ export default class TaskHiderPlugin extends Plugin {
     await this.saveSettings();
   }
 
+  /**
+   * Update body classes to reflect current settings
+   */
+  updateBodyClasses() {
+    document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
+    document.body.toggleClass("hide-sub-bullets", this.settings.hideSubBullets);
+  }
+
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
   }
@@ -214,8 +222,8 @@ export default class TaskHiderPlugin extends Plugin {
       // This is especially important on mobile platforms like iOS
       this.app.workspace.onLayoutReady(() => {
         try {
-          // Set initial body class for preview mode
-          document.body.toggleClass("hide-completed-tasks", this.settings.hiddenState);
+          // Set initial body classes for preview mode
+          this.updateBodyClasses();
 
           // Update status bar if enabled
           if (this.statusBar && this.settings.showStatusBar) {
@@ -294,6 +302,9 @@ class TaskHiderSettingTab extends PluginSettingTab {
         toggle.setValue(this.plugin.settings.hideSubBullets).onChange(async (value) => {
           this.plugin.settings.hideSubBullets = value;
           await this.plugin.saveSettings();
+
+          // Update body classes for CSS
+          this.plugin.updateBodyClasses();
 
           // Update all editor extensions with new settings
           this.plugin.updateEditorExtensions();
