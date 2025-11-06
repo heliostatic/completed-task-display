@@ -12,13 +12,12 @@ body.hide-completed-tasks.hide-sub-bullets .markdown-preview-view li.task-list-i
     display: none;
 }
 
-/* Hide completed task lines that have been replaced by our decorations */
-/* When a replace decoration is active, the line has data-task="x" but NO label (checkbox was removed) */
+/* Hide task lines that have been replaced by our decorations */
+/* When a replace decoration is active, the line has data-task but NO label (checkbox was removed) */
 /* AND it only contains widget buffers and contenteditable=false spans (content was replaced) */
-.markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task="x"]:not(:has(label)):has([contenteditable="false"]),
-.markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task="X"]:not(:has(label)):has([contenteditable="false"]),
-.markdown-source-view .cm-content > div.cm-line[data-task="x"]:not(:has(label)):has([contenteditable="false"]),
-.markdown-source-view .cm-content > div.cm-line[data-task="X"]:not(:has(label)):has([contenteditable="false"]) {
+/* This applies to both completed tasks and their uncompleted sub-tasks when hideSubBullets is on */
+.markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task]:not(:has(label)):has([contenteditable="false"]),
+.markdown-source-view .cm-content > div.cm-line[data-task]:not(:has(label)):has([contenteditable="false"]) {
     display: none !important;
     height: 0 !important;
     min-height: 0 !important;
@@ -30,21 +29,9 @@ body.hide-completed-tasks.hide-sub-bullets .markdown-preview-view li.task-list-i
     visibility: hidden !important;
 }
 
-/* Hide sub-bullets that have been replaced - only when both settings are enabled */
-/* Must have HyperMD-list-line class and contenteditable=false content (from replace decoration) */
-/* This ensures we only hide actual list items that have been replaced by decorations */
-body.hide-completed-tasks.hide-sub-bullets .markdown-source-view.mod-cm6 .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):has([contenteditable="false"]),
-body.hide-completed-tasks.hide-sub-bullets .markdown-source-view .cm-content > div.cm-line.HyperMD-list-line:not(:has(label)):has([contenteditable="false"]) {
-    display: none !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    max-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    line-height: 0 !important;
-    overflow: hidden !important;
-    visibility: hidden !important;
-}
+/* Note: Sub-bullets in edit mode are hidden by CodeMirror replace decorations (see main.ts),
+   not by CSS. The JavaScript applies replace decorations only to sub-bullets beneath completed tasks.
+   We don't need CSS rules here because the decorations handle it properly. */
 
 /* Hide gutter line numbers for hidden lines (those with height: 0) */
 /* When replace decorations hide content, the gutter elements get height: 0 but are still rendered */
