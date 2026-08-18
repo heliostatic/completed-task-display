@@ -1,0 +1,16 @@
+/* The 1.0.11 edit-mode rules, copied from styles.css at commit dc7cc5f.
+   Prefixed with .legacy-mode so this pane's CSS cannot leak into the others. */
+.legacy-mode .markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task]:not(:has(label)):has([contenteditable="false"]),
+.legacy-mode .markdown-source-view .cm-content > div.cm-line[data-task]:not(:has(label)):has([contenteditable="false"]),
+.legacy-mode .markdown-source-view.mod-cm6 .cm-content > div.HyperMD-task-line:not(:has(label)):has([contenteditable="false"]),
+.legacy-mode .markdown-source-view .cm-content > div.HyperMD-task-line:not(:has(label)):has([contenteditable="false"]) {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+}

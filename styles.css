@@ -24,15 +24,10 @@ body.hide-completed-tasks.hide-sub-bullets
     display: none;
 }
 
-/* Hide task lines that have been replaced by our decorations */
-/* When a replace decoration is active, the line has data-task but NO label (checkbox was removed) */
-/* AND it only contains widget buffers and contenteditable=false spans (content was replaced) */
-/* This applies to both completed tasks and their uncompleted sub-tasks when hideSubBullets is on */
-.markdown-source-view.mod-cm6 .cm-content > div.cm-line[data-task]:not(:has(label)):has([contenteditable="false"]),
-.markdown-source-view .cm-content > div.cm-line[data-task]:not(:has(label)):has([contenteditable="false"]),
-/* Also target HyperMD task lines in source mode */
-.markdown-source-view.mod-cm6 .cm-content > div.HyperMD-task-line:not(:has(label)):has([contenteditable="false"]),
-.markdown-source-view .cm-content > div.HyperMD-task-line:not(:has(label)):has([contenteditable="false"]) {
+/* Collapse the lines the plugin decided to hide in Edit/Live Preview mode.
+   main.ts tags exactly those lines with a line decoration carrying this class,
+   so no other task line can be caught by these rules. */
+.markdown-source-view .cm-content > .cm-line.ctd-hidden-line {
     display: none !important;
     height: 0 !important;
     min-height: 0 !important;
@@ -45,8 +40,7 @@ body.hide-completed-tasks.hide-sub-bullets
 }
 
 /* Note: Sub-bullets in edit mode are hidden by CodeMirror replace decorations (see main.ts),
-   not by CSS. The JavaScript applies replace decorations only to sub-bullets beneath completed tasks.
-   We don't need CSS rules here because the decorations handle it properly. */
+   not by CSS. The JavaScript applies replace decorations only to sub-bullets beneath completed tasks. */
 
 /* Hide gutter line numbers for hidden lines (those with height: 0) */
 /* When replace decorations hide content, the gutter elements get height: 0 but are still rendered */
