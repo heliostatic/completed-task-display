@@ -1,0 +1,53 @@
+body {
+    margin: 0;
+    padding: 24px;
+    background: #1e1e1e;
+    color: #dcddde;
+    font-family: -apple-system, "Segoe UI", sans-serif;
+}
+
+#panes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+}
+
+.pane h2 {
+    font-size: 15px;
+    margin: 0 0 4px;
+}
+
+.pane p {
+    font-size: 12px;
+    margin: 0 0 10px;
+    color: #999;
+}
+
+.pane .editor {
+    background: #262626;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 8px 4px;
+}
+
+.cm-editor {
+    font-family: "SFMono-Regular", Menlo, monospace;
+    font-size: 13px;
+    color: #dcddde;
+}
+
+.cm-editor .cm-content {
+    caret-color: #dcddde;
+}
+
+.cm-editor .cm-cursor {
+    border-left-color: #dcddde;
+}
+
+/* Stand-in for the pill another plugin renders over a due date */
+.tasks-date-pill {
+    background: #3a4a5a;
+    border-radius: 4px;
+    padding: 0 4px;
+}
