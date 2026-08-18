@@ -8,7 +8,8 @@ Obsidian plugin that hides completed tasks (`- [x]`) behind a ribbon toggle, in 
 npm install        # setup
 npm test           # vitest suite in /tests
 npm run build      # rollup → dist/main.js
-npx tsc --noEmit   # typecheck
+npm run lint       # eslint (flat config in eslint.config.js)
+npm run typecheck  # tsc --noEmit
 ./release.sh       # cut a release (use --dry-run first)
 ```
 
@@ -16,7 +17,7 @@ npx tsc --noEmit   # typecheck
 
 1. Implement the change. Line-selection logic lives in `utils.ts` (pure, tested); CodeMirror wiring in `decorations.ts`; plugin lifecycle in `main.ts`.
 2. Add automated tests in `/tests` for any new behavior.
-3. Run the full test suite and typecheck before committing.
+3. Run tests, lint, and typecheck before committing.
 4. Use descriptive commit messages (`feat:`, `fix:`, `test:`, `chore:`), referencing GitHub issues where relevant (e.g. `fixes #38`).
 
 ## Visual verification
