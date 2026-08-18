@@ -11,3 +11,4 @@ main.js
 
 # Mac
 .DS_Store
+dist-harness

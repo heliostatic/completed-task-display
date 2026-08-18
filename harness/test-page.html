@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Completed Task Display — interactive test page</title>
+  </head>
+  <body>
+    <header>
+      <h1>Completed Task Display — test page</h1>
+      <p class="lede">
+        The plugin's real hiding code and real <code>styles.css</code>, running on CodeMirror 6 in
+        this browser. Edit the note on the left, flip the switches, and watch what disappears.
+        Nothing here talks to a vault — it is a bench, not Obsidian.
+      </p>
+    </header>
+
+    <section class="controls">
+      <label><input type="checkbox" id="hiddenState" checked /> Hide completed tasks <span class="hint">(ribbon toggle)</span></label>
+      <label><input type="checkbox" id="hideSubBullets" /> Hide sub-bullets <span class="hint">(plugin setting)</span></label>
+      <label><input type="checkbox" id="widgets" checked /> Other plugins render dates/tags <span class="hint">(Tasks, Kanban…)</span></label>
+      <label class="danger"><input type="checkbox" id="legacy" /> Use the 1.0.11 stylesheet <span class="hint">(reproduces the bug)</span></label>
+    </section>
+
+    <main>
+      <div class="col">
+        <h2>Edit / Live Preview <span class="sub">CodeMirror — editable</span></h2>
+        <div class="editor"><div class="markdown-source-view mod-cm6" id="editor"></div></div>
+        <div id="report" class="report"></div>
+      </div>
+      <div class="col">
+        <h2>Reading view <span class="sub">rendered HTML, body classes only</span></h2>
+        <iframe id="reading" title="Reading view"></iframe>
+      </div>
+    </main>
+
+    <footer>
+      <p id="verdict" class="verdict"></p>
+      <p class="fine">
+        Expected: only <code>[x]</code> / <code>[X]</code> lines disappear (plus their indented
+        children when "Hide sub-bullets" is on). Any other line vanishing is the bug from issue #38.
+      </p>
+    </footer>
+
+    <script type="module" src="./test-page.ts"></script>
+  </body>
+</html>
