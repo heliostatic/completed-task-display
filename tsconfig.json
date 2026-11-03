@@ -13,7 +13,8 @@
       "DOM",
       "ES2018"
     ],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": []
   },
   "include": [
     "*.ts"
